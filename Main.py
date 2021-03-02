@@ -151,7 +151,7 @@ def User_Alert(text='An Error Occured',title = 'Error',clip_board = False,button
         clipboard.copy(text)
     
     err = tk.Tk()
-    err.geometry("400x300")
+    #err.geometry("400x300")
     def Destroy(destroy_win):
         
         err.destroy()
@@ -399,8 +399,8 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
         line1 = 'ADC Gain: {0} ± {1}'.format(grad,Syy)
         line2 = 'Gain w/o Electronic Gain: {0} ± {1}'.format(true_gain,true_gain_Syy)
         line3 = 'True Gain: {0} ± {1}'.format((true_gain*Electronic_Gain_Value),(true_gain_Syy*Electronic_Gain_Value))
-        
-        User_Alert((line1,line2,line3),destroy_win=(False),title = 'Results',clip_board = True)
+        message = ('{0}\n{1}\n{2}').format(line1,line2,line3)
+        User_Alert(message,destroy_win=(False),title = 'Results',clip_board = True)
 
     
 
