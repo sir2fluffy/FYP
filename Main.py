@@ -197,7 +197,9 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
     
     def Single_Fit(data, height, center, stdev):
 
-        return sc.curve_fit(Gaussian,data[:,0],data[:,1],p0=(height,center,stdev))[0]
+        temp = sc.curve_fit(Gaussian,data[:,0],data[:,1],p0=(height,center,stdev))[0]
+        print(temp)
+        return temp
     #doo maths 
 
     if Single_Peak_Mode_Only.get() == True:
@@ -382,19 +384,23 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
         Syy = temp/ref.number_of_peaks
 
         #then  make a pop up
-        def idiot_proof(text):
+        def idiot_proof(text,string):
             try:
                 number = int(text)
             except:
-                User_Alert(text = 'Number not entered in adc calibration', title = 'you idiot')
+                User_Alert(text = 'Number not entered in {0}'.format(string), title = 'you idiot')
             else:
                 return number
-        Adc_Calibration_Value = idiot_proof(Adc_Calibration.get())
-        
+        Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
+        Electronic_Gain_Value = idiot_proof(Electronic_Gain.get(),'electronic gain')
         true_gain = grad* Adc_Calibration_Value
         true_gain_Syy = Syy * Adc_Calibration_Value
         
-        User_Alert(('ADC Gain: {0} ± {1}\nGain: {2} ± {3}').format(grad,Syy,true_gain,true_gain_Syy),destroy_win=(False),title = 'Results',clip_board = True)
+        line1 = 'ADC Gain: {0} ± {1}'.format(grad,Syy)
+        line2 = 'Gain w/o Electronic Gain: {0} ± {1}'.format(true_gain,true_gain_Syy)
+        line3 = 'True Gain: {0} ± {1}'.format((true_gain*Electronic_Gain_Value),(true_gain_Syy*Electronic_Gain_Value))
+        
+        User_Alert((line1,line2,line3),destroy_win=(False),title = 'Results',clip_board = True)
 
     
 
@@ -475,9 +481,19 @@ Single_Peak_Mode_Only_CB.place(x=x,y=y+80)
 Progress_Bar = ttk.Progressbar(root,length = 100, orient = tk.HORIZONTAL, mode = 'determinate')
 Progress_Bar.place(x=x,y=y+50)
 
-Adc_Calibration = tk.Entry(root)
-Adc_Calibration.place(x=x,y=y+120)
+Adc_Calibration = tk.Entry(root,width = 10)
+Adc_Calibration.place(x=x+45,y=y+120)
 Adc_Calibration.insert(1,string = '40')
+Adc_Calibration_l=tk.Label(root, text = 'ADC:',font=(text_font, text_size))
+Adc_Calibration_l.place(x=x,y=y+120)
+
+y = y + 50
+Electronic_Gain = tk.Entry(root,width = 10)
+Electronic_Gain.place(x=x+45,y=y+120)
+Electronic_Gain.insert(1,string = '32')
+Electronic_Gain_l=tk.Label(root, text = 'Electronic Gain:',font=(text_font, text_size))
+Electronic_Gain_l.place(x=x-55,y=y+120)
+
 
 
 root.bind('<space>', Add_Coords2)
