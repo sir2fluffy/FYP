@@ -198,7 +198,7 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
     def Single_Fit(data, height, center, stdev):
 
         temp = sc.curve_fit(Gaussian,data[:,0],data[:,1],p0=(height,center,stdev))[0]
-        print(temp)
+
         return temp
     #doo maths 
 
@@ -378,31 +378,32 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
         for i in range(0,len(centers)):
             x.append(i)
             y.append(centers[i])
-        temp = 0
-        for i in range(0,ref.number_of_peaks):
-            temp = temp + (y[i]-stright_line(x[i], grad, intercept))**2
-        Syy = temp/ref.number_of_peaks
+
+
 
         #then  make a pop up
         def idiot_proof(text,string):
             try:
                 number = int(text)
             except:
-                User_Alert(text = 'Number not entered in {0}'.format(string), title = 'you idiot')
+                User_Alert(text = 'Number not entered in {0}'.format(string), title = 'You Idiot')
             else:
                 return number
+            
+        Adc_Calibration_Unit = 1e-15
         Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
-        Electronic_Gain_Value = idiot_proof(Electronic_Gain.get(),'electronic gain')
-        true_gain = grad* Adc_Calibration_Value
-        true_gain_Syy = Syy * Adc_Calibration_Value
+        gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
         
-        line1 = 'ADC Gain: {0} ± {1}'.format(grad,Syy)
-        line2 = 'Gain w/o Electronic Gain: {0} ± {1}'.format(true_gain,true_gain_Syy)
-        line3 = 'True Gain: {0} ± {1}'.format((true_gain*Electronic_Gain_Value),(true_gain_Syy*Electronic_Gain_Value))
-        message = ('{0}\n{1}\n{2}').format(line1,line2,line3)
-        User_Alert(message,destroy_win=(False),title = 'Results',clip_board = True)
-
-    
+        charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
+        
+        gain_intr = charge/(1.60217662e-19*gain_elec)
+        gain_intr = str(round(gain_intr,0))[:-2]
+        
+        
+        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '69420') 
+        
+        
+        User_Alert(text = alert_message,title='Results',clip_board=True)
 
 
     
@@ -470,7 +471,7 @@ Add_Button.place(x=x+130,y=y-50,height = 36,width=58)
 
 x = 1700
 y = 250
-Analyse_Button = tk.Button(root,state = tk.DISABLED,text='Analyse',command= lambda:Big_Maths((most_recent_coords_l,Remove_Button,saved_recent_coords_l,Add_Button,Adc_Calibration,Analyse_Button,Clear_Button , Single_Peak_Mode_Only_CB),(None),(Progress_Bar)),font=(text_font, text_size))
+Analyse_Button = tk.Button(root,state = tk.DISABLED,text='Analyse',command= lambda:Big_Maths((most_recent_coords_l,Remove_Button,saved_recent_coords_l,Add_Button,Analyse_Button,Clear_Button , Single_Peak_Mode_Only_CB),(None),(Progress_Bar)),font=(text_font, text_size))
 Analyse_Button.place(x=x,y=y,height = 36,width=58)
 
 Single_Peak_Mode_Only = tk.BooleanVar()
