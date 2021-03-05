@@ -12,7 +12,7 @@ from scipy import optimize as sc
 
 CSV_files = []
 for file in listdir('Data'):
-    if isfile(join('Data', file)) and file[-4:]=='.csv':
+    if isfile(join('Data', file)) and file[-4:]=='.csv' or isfile(join('Data', file)) and file[-4:]=='.txt':
         CSV_files.append(file)
 #ff
 root = tk.Tk()
@@ -36,26 +36,49 @@ def Load_CSV(disable_widgets, enable_widgets):
         widget.config(state="disabled")        
     for widget in enable_widgets:
         widget.config(state="normal")        
-    CSV_name = option_menu_title.get()
-    CSV_path = join('Data',CSV_name)
-    root.title(('PPP: {0}').format(CSV_name))
-    file = open(CSV_path)
-    csv_reader = csv.reader(file)
-    lines = 0 #count lines in the chosen csv
-    for row in csv_reader:
-        lines += 1
-    array = np.zeros((lines,2))
-    ref.array_length = lines
-    #make empty array    
-    file = open(CSV_path)#for some reason i need to repeate this bit otherwise it wont work WHO KNOWS
-    csv_reader = csv.reader(file)
-    line = 0
-    for row in csv_reader: #populate array
-        array[line,0] = float(row[0])
-        array[line,1] = float(row[1])
-        line = line + 1
+        
+    file_type = (option_menu_title.get())[-4:]
+    
+    if file_type == '.csv':
+        CSV_name = option_menu_title.get()
+        CSV_path = join('Data',CSV_name)
+        root.title(('PPP: {0}').format(CSV_name))
+        file = open(CSV_path)
+        csv_reader = csv.reader(file)
+        lines = 0 #count lines in the chosen csv
+        for row in csv_reader:
+            lines += 1
+        ref.lines = len(lines)
+        array = np.zeros((lines,2))
+        ref.array_length = lines
+        #make empty array    
+        file = open(CSV_path)#for some reason i need to repeate this bit otherwise it wont work WHO KNOWS
+        reader = csv.reader(file)
+        
+        for index,row in enumerate(reader): #populate array
+            array[index,0] = float(row[0])
+            array[index,1] = float(row[1])
+    
+    elif file_type == '.txt':
+        TXT_name = option_menu_title.get()
+        TXT_path = join('Data',TXT_name)
+        text_file = open(TXT_path,'r')
+        reader = text_file.readlines()
+        
+        array = np.zeros((len(reader),2))
+    
+    
+        for index,line in enumerate(reader):
+            x,y = float(line[:(line.find('\t'))]),float(line[(line.find('\t')):])
+            array[index,0] = float(x)
+            array[index,1] = float(y)
 
-    ref.lines = line
+
+
+
+
+
+        ref.lines = len(reader)#fix this to be the number of lines
     fig = pl.Figure(figsize = (16, 9))
     plot1 = fig.add_subplot(111) 
     plot1.plot(array[:,0],array[:,1])
@@ -333,7 +356,7 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
         pl.plot(array[:,0],y_total,color='red')
         pl.rcParams['figure.figsize']  = 16,9
         pl.savefig('Saved/fig4.png')
-        pl.xlim(min(array[:,0]),5000)
+        #pl.xlim(min(array[:,0]),5000)
         pl.xlabel('ADC')
         pl.ylabel('Entries')
         pl.show()
