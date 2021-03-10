@@ -7,10 +7,10 @@ Created on Tue Mar  9 20:23:14 2021
 
 import tkinter as tk
 import tkinter.ttk as ttk
-import sys, csv, clipboard
+import sys, csv, pyperclip
 import numpy as np
 import pylab as pl
-from os import listdir, stat
+from os import listdir, stat, startfile
 from os.path import isfile, join
 
 
@@ -27,7 +27,15 @@ for file in listdir('Data'):
     if isfile(join('Data', file)) and file[-4:]=='.csv' or isfile(join('Data', file)) and file[-4:]=='.txt':
         Data_files.append(file)
         
-        
+
+
+
+
+def write_factory():
+    config_file = open(join('Saved','config.txt'),'w')
+    config_file.write("40\n32\n100\nNone")
+    config_file.close()
+
 class default:#when done add saving ability
     # stores the adc unit as a si conversion and the symbol
     ADC_unit = [10e-15, 'FC']
@@ -35,38 +43,98 @@ class default:#when done add saving ability
     ELEC_gain = 32
     max_peaks = 15
     Stdev = 100
+    
+class factory:#when done add saving ability
+    # stores the adc unit as a si conversion and the symbol
+    ADC_unit = [10e-15, 'FC']
+    ADC_calibration = 40
+    ELEC_gain = 32
+    max_peaks = 15
+    Stdev = 100
+    
 
-class file_info:
+class file_info:# the info about the laoded file is stored here
     size = 0
     name = ''
     rows = 0
+    previous_load = None
 
-class widgets:
+class widgets: # differnt lists of widgets to be anbled/dsiabled
     enable_on_load = []
     disable_on_load = []
 
-class Data:
+class Data:#stores useful chunks of data
     peak_coords = []
     current_coords = []
     disable = False
     created_imgs = []
+
+
+
+
+
+try: #trys to open save file, if it cant creates a new one and writes the default data to it
+    config_file = open(join('Saved','config.txt'),'r')
+
+
+except:
+    tk.messagebox.showerror("Error", "No save file, creating one")
+    write_factory()
     
+    config_file = open(join('Saved','config.txt'),'r')
 
 
-def Load_File(): # this function loads the selected file
+reader = config_file.readlines()#loads data from the save file
+default.ADC_calibration = int(reader[0])
+default.ELEC_gain = int(reader[1])
+default.Stdev = int(reader[2])
+file_info.previous_load = str(reader[3])
+
+
+config_file.close()
+
+        
+    
+    
+def Load_File(load_last = False): # this function loads the selected file
+
+
+
 
     
     global array, canvas, info
 
-    for widget in widgets.disable_on_load:
-        widget.config(state="disabled")        
-    for widget in widgets.enable_on_load:
-        widget.config(state="normal")        
+   
+
+
+    if load_last == True:
         
-    file_type = (option_menu_title.get())[-4:]
+        
+
+        config_file = open(join('Saved','config.txt'),'r')
+        reader = config_file.readlines()#loads data from the save file
+        name = str(reader[3])
+        config_file.close()
+        if name == 'None':
+            tk.messagebox.showerror("Error", "No last file saved")
+            return
+
+
+
+    else:
+        name = option_menu_title.get()
+    file_type = (name)[-4:]#get file type 
+        
+        
+
+    
+    
+    
+    
+    
     
     if file_type == '.csv':
-        name = option_menu_title.get()
+        
         path = join('Data',name)
         root.title(('PPP: {0}').format(name))
         file = open(path)
@@ -87,7 +155,7 @@ def Load_File(): # this function loads the selected file
      
 
     elif file_type == '.txt':
-        name = option_menu_title.get()
+        
         path = join('Data',name)
         text_file = open(path,'r')
         reader = text_file.readlines()
@@ -102,6 +170,30 @@ def Load_File(): # this function loads the selected file
             x,y = float(line[:(line.find('\t'))]),float(line[(line.find('\t')):])
             array[index,0] = float(x)
             array[index,1] = float(y)
+            
+            
+            
+    if load_last == False:
+        config_file = open(join('Saved','config.txt'),'r')
+        reader = config_file.readlines()#loads data from the save file
+        adc_entry = int(reader[0])#reads the first 3 lines
+        elec_entry = int(reader[1])
+        stdev_entry = int(reader[2])
+        file_info.previous_load = str(reader[3])
+        config_file.close()
+        config_file = open(join('Saved','config.txt'),'w')
+        
+        last=str(name)#
+        
+        config_file.write(("{0}\n{1}\n{2}\n{3}").format(adc_entry,elec_entry,stdev_entry,last))# writes to the file with the enw last load
+        config_file.close()
+    
+    
+    
+    for widget in widgets.disable_on_load:#enable and disable required widgets
+        widget.config(state="disabled")        
+    for widget in widgets.enable_on_load:
+        widget.config(state="normal")     
         
     size = stat(path).st_size
 
@@ -148,7 +240,7 @@ def Load_File(): # this function loads the selected file
     def callback(event):
         x = int(event.xdata)
         y = int(event.ydata)
-        most_recent_coords.set(('\nCurrent Coords:\n'+str(x)+', '+ str(y)))
+        most_recent_coords.set(('\nCurrent Coords:\n'+str(x)+', '+ str(y))+((default.max_peaks)*'\n'))
         Data.current_coords=(x,y)
     canvas.mpl_connect('button_press_event',callback)
  
@@ -420,25 +512,28 @@ def Big_Maths():# add a bit to read the settings
             
             
             
-        # Adc_Calibration_Unit = 1e-15
-        # Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
-        # gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
+        Adc_Calibration_Unit = 1e-15
+        Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
+        gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
         
-        # charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
-        # print(grad,': grad')
-        # gain_elec_factor = 10**(gain_elec/20)
+        charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
+        print(grad,': grad')
+        gain_elec_factor = 10**(gain_elec/20)
         
-        # gain_intr = charge/(1.60217662e-19*gain_elec_factor)
-        # gain_intr = str(round(gain_intr,0))[:-2]
-        
-        
+        gain_intr = charge/(1.60217662e-19*gain_elec_factor)
+        gain_intr = str(round(gain_intr,0))[:-2]
         
         
         
-        # alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '3') 
         
         
-        # User_Alert(text = alert_message,title='Results',clip_board=True)
+        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '3') 
+        
+        tk.messagebox.showinfo("Results", alert_message)
+        pyperclip.copy(alert_message)
+        
+        
+
 
 
     
@@ -451,7 +546,9 @@ text_font ="Helvetica"
 
 root.title('PPP')
 root.state('zoomed')
-
+def credit():
+    tk.messagebox.showinfo("Credit", "Program made by Charles V Yelland as part of a final year project for the University of Sussex")
+    
 def setup_fit_frame():#setting up the fit frame
     text_size = 10
     text_font ="Helvetica"
@@ -478,7 +575,7 @@ def setup_fit_frame():#setting up the fit frame
     widgets.enable_on_load.append(add_button)
     
     most_recent_coords = tk.StringVar()
-    most_recent_coords.set('\nCurrent Coords:'+15*'\n')
+    most_recent_coords.set('\nCurrent Coords:'+16*'\n')
     
     
     most_recent_coords_l=tk.Label(fit_frame, textvariable = most_recent_coords,font=(text_font, text_size),state = tk.DISABLED)
@@ -512,6 +609,7 @@ def setup_file_frame():#add settings frame
     option_menu = tk.OptionMenu(file_frame,option_menu_title,*Data_files)
     option_menu.config( height = button_height, width = 60)
     option_menu.grid(column = 0, row = 1)
+    
     widgets.disable_on_load.append(option_menu)
     
     
@@ -577,6 +675,106 @@ def setup_info_frame():
     info_frame.grid_columnconfigure(0, minsize=215)
 
 # call all the set up fucntions just to keep it neat tbh
+
+def settings():
+    def reset():
+        write_factory()
+        tk.messagebox.showinfo("Settings", "Settings reset")
+        trunk.destroy()
+        
+    def save_settings(adc_entry,stdev_entry,elec_entry):
+        def idiot_proof(entry):
+            try:
+                int(entry.get())
+            except:
+                return False
+            else:
+                return True
+        
+        for entry in (adc_entry,stdev_entry,elec_entry):
+            if idiot_proof(entry) == False:
+                tk.messagebox.showerror("Error", "Please only enter interger values")
+        
+        
+        
+        
+        config_file = open(join('Saved','config.txt'),'w')
+        
+        last=str(file_info.previous_load)
+        
+        
+        
+        config_file.write(("{0}\n{1}\n{2}\n{3}").format(adc_entry.get(),elec_entry.get(),stdev_entry.get(),last))
+        config_file.close()
+        
+        
+        
+        
+
+    class text_label:
+        def __init__(self,text,x,y,span = 2,sticky = '',padx = 0,pady= 0):
+            text_size = 12
+            text_font ="Helvetica"
+            label = tk.Label(trunk,text = text,font=(text_font, text_size))
+            label.grid(column = x, row = y, columnspan = span,sticky = sticky,padx = padx, pady = pady)
+
+    text_size = 12
+    text_font ="Helvetica"  
+            
+    button_height = 2
+    button_width = 13
+    
+    trunk = tk.Toplevel()
+    
+    text_label('Default Sigma',0,1)
+    text_label('ADC',0,2,sticky = 'e')
+    text_label('electronic Gain',0,3)
+    text_label('db',3,3)
+    text_label('n/a',3,1)
+    text_label('FC',3,2)
+    text_label('Value',2,0,pady = 3)
+    text_label('Unit',3,0,padx = 10)
+    
+    trunk.title('Settings')
+    trunk.resizable(False, False)
+    
+    
+    Electronic_Gain = tk.Entry(trunk,width = 10,font=(text_font, text_size))
+    Electronic_Gain.grid(column = 2,row = 3)
+    Electronic_Gain.insert(1,string = str(default.ELEC_gain))
+
+    ADC_Calibration = tk.Entry(trunk,width = 10,font=(text_font, text_size))
+    ADC_Calibration.grid(column = 2,row = 2)
+    ADC_Calibration.insert(1,string = str(default.ADC_calibration))
+    
+
+
+    Default_sigma = tk.Entry(trunk,width = 10,font=(text_font, text_size))
+    Default_sigma.grid(column = 2,row = 1)
+    Default_sigma.insert(1,string = str(default.Stdev))
+    
+    
+    Save_B = tk.Button(trunk, text = 'Save',command = lambda: save_settings(ADC_Calibration,Default_sigma,Electronic_Gain),font=(text_font, text_size))
+    Save_B.config( height = button_height, width = button_width)
+    Save_B.grid(column = 0, row = 4, columnspan = 2)
+    
+    Reset_B = tk.Button(trunk, text = 'Reset',command = reset,font=(text_font, text_size))
+    Reset_B.config( height = button_height, width = button_width)
+    Reset_B.grid(column = 2, row = 4, columnspan = 2,pady = 15)
+
+
+    prefixes_dict = {'n':10e-9,'p':10e-12,'f':10e-15,'a':10e-18}
+
+    temp = []
+    for prefix in ('n','p','f','a'):
+        temp.append(('{0} [{1}]').format(prefix,prefixes_dict[prefix]))
+
+
+    
+
+    trunk.iconphoto(False, tk.PhotoImage(file='Saved\settings_icon.png'))
+    trunk.mainloop()
+
 setup_maths_frame()
 setup_fit_frame()
 setup_file_frame()
@@ -589,6 +787,26 @@ root.bind('<BackSpace>', Remove_Coords2)
 
 #add menu bar, to open settings and credit
 
+menubar = tk.Menu(root)
+filemenu = tk.Menu(menubar, tearoff=0)
+filemenu.add_command(label="Open Folder",command = lambda: startfile("Data"))
 
 
+
+filemenu.add_command(label="Load Last",command = lambda: Load_File(load_last=True))
+
+filemenu.add_separator()
+
+filemenu.add_command(label="Settings",command = settings)
+filemenu.add_command(label="Exit")
+filemenu.add_separator()
+filemenu.add_command(label="Credit",command = credit)
+menubar.add_cascade(label="File", menu=filemenu)
+
+
+
+root.iconphoto(False, tk.PhotoImage(file='Saved\icon.png'))
+
+
+root.config(menu=menubar)
 root.mainloop()
