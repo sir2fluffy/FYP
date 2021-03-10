@@ -29,6 +29,11 @@ class ref:
     images_list = []
     adc_gradient = None
     disable = False
+    
+    
+    
+    
+    
 def Load_CSV(disable_widgets, enable_widgets):
     
     global array, canvas
@@ -48,7 +53,7 @@ def Load_CSV(disable_widgets, enable_widgets):
         lines = 0 #count lines in the chosen csv
         for row in csv_reader:
             lines += 1
-        ref.lines = len(lines)
+        ref.lines = lines
         array = np.zeros((lines,2))
         ref.array_length = lines
         #make empty array    
@@ -69,6 +74,10 @@ def Load_CSV(disable_widgets, enable_widgets):
     
     
         for index,line in enumerate(reader):
+            # print(index)
+            # print(line[:(line.find('\t'))])
+            # print(line[(line.find('\t')):])
+            # print('')
             x,y = float(line[:(line.find('\t'))]),float(line[(line.find('\t')):])
             array[index,0] = float(x)
             array[index,1] = float(y)
@@ -413,17 +422,24 @@ def Big_Maths(disable_widgets, enable_widgets, P_bar):
             else:
                 return number
             
+            
+            
         Adc_Calibration_Unit = 1e-15
         Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
         gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
         
         charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
+        print(grad,': grad')
+        gain_elec_factor = 10**(gain_elec/20)
         
-        gain_intr = charge/(1.60217662e-19*gain_elec)
+        gain_intr = charge/(1.60217662e-19*gain_elec_factor)
         gain_intr = str(round(gain_intr,0))[:-2]
         
         
-        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '69420') 
+        
+        
+        
+        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '3') 
         
         
         User_Alert(text = alert_message,title='Results',clip_board=True)
@@ -453,7 +469,7 @@ y = 900
 option_menu_title = tk.StringVar()
 option_menu_title.set(CSV_files[0])
 option_menu = tk.OptionMenu(root,option_menu_title,*CSV_files)
-option_menu.place(x=x,y=y,width = 250,height = 40)
+option_menu.place(x=x-100,y=y,width = 350,height = 40)
 
 
 Load_Button = tk.Button(root, state = tk.NORMAL,text='Load',command= lambda: Load_CSV((Load_Button,option_menu),
