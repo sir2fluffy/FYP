@@ -1,4 +1,4 @@
-40
-32
+4000
+3200
 100
-None
+multiphoton_spectrum_21022021_53.2V_gain40_histo.txt

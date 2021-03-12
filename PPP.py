@@ -31,7 +31,7 @@ for file in listdir('Data'):
 
 
 
-def write_factory():
+def write_factory():# resets the save file to default settings
     config_file = open(join('Saved','config.txt'),'w')
     config_file.write("40\n32\n100\nNone")
     config_file.close()
@@ -62,12 +62,14 @@ class file_info:# the info about the laoded file is stored here
 class widgets: # differnt lists of widgets to be anbled/dsiabled
     enable_on_load = []
     disable_on_load = []
+    disable_on_mafs = []
 
 class Data:#stores useful chunks of data
     peak_coords = []
     current_coords = []
     disable = False
     created_imgs = []
+    already_loaded = False
 
 
 
@@ -107,7 +109,7 @@ def Load_File(load_last = False): # this function loads the selected file
    
 
 
-    if load_last == True:
+    if load_last == True:#if load last is selcted this repalces the apth and name with the saved ones
         
         
 
@@ -154,7 +156,7 @@ def Load_File(load_last = False): # this function loads the selected file
             array[index,1] = float(row[1])
      
 
-    elif file_type == '.txt':
+    elif file_type == '.txt':#method for reading atxt file
         
         path = join('Data',name)
         text_file = open(path,'r')
@@ -173,7 +175,7 @@ def Load_File(load_last = False): # this function loads the selected file
             
             
             
-    if load_last == False:
+    if load_last == False:#if load last is file saves it to the file
         config_file = open(join('Saved','config.txt'),'r')
         reader = config_file.readlines()#loads data from the save file
         adc_entry = int(reader[0])#reads the first 3 lines
@@ -205,7 +207,7 @@ def Load_File(load_last = False): # this function loads the selected file
     info.set(('File:\nName: {0}\nSize (bytes): {1}\n# Data points: {2}').format(name,size,row_count))
  
 
-
+    #sets the file info box to correct stuff
 
 
         
@@ -213,11 +215,18 @@ def Load_File(load_last = False): # this function loads the selected file
     fig = pl.Figure(figsize = (16, 9))
     plot1 = fig.add_subplot(111) 
     plot1.plot(array[:,0],array[:,1])
-
+    global toolbar
     canvas = FigureCanvasTkAgg(fig, master = root)   
-    canvas.draw() 
-    toolbar = NavigationToolbar2Tk(canvas,root) 
-    toolbar.update() 
+    canvas.draw()
+    
+    if Data.already_loaded == True:
+        toolbar.destroy()
+        toolbar = NavigationToolbar2Tk(canvas,root) 
+        toolbar.update() 
+    elif Data.already_loaded == False:
+        toolbar = NavigationToolbar2Tk(canvas,root) 
+        toolbar.update() 
+    
     canvas.get_tk_widget().place(x=0,y=7) 
 
 
@@ -243,6 +252,7 @@ def Load_File(load_last = False): # this function loads the selected file
         most_recent_coords.set(('\nCurrent Coords:\n'+str(x)+', '+ str(y))+((default.max_peaks)*'\n'))
         Data.current_coords=(x,y)
     canvas.mpl_connect('button_press_event',callback)
+    Data.already_loaded = True
  
 def Update():
     global analysis_button
@@ -314,7 +324,9 @@ def Mode_Switch():
 
 
 def Big_Maths():# add a bit to read the settings
-    global Progress_Bar
+    global Progress_Bar, ADC, Electronic_Gain
+    for widget in widgets.disable_on_mafs:#enable and disable required widgets
+        widget.config(state="disabled")
     def Gaussian(x,height,center,stdev):
         return height*np.exp(-((x-center)**2)/(2*(stdev**2)))
 
@@ -511,9 +523,9 @@ def Big_Maths():# add a bit to read the settings
                 return number
             
             
-            
+
         Adc_Calibration_Unit = 1e-15
-        Adc_Calibration_Value = idiot_proof(Adc_Calibration.get(),'adc calibration')
+        Adc_Calibration_Value = idiot_proof(ADC.get(),'adc calibration')
         gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
         
         charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
@@ -620,7 +632,7 @@ def setup_file_frame():#add settings frame
     
     #add settings tab
 def setup_maths_frame():
-    global analysis_button, Single_Peak_Mode_Only, Progress_Bar
+    global analysis_button, Single_Peak_Mode_Only, Progress_Bar, ADC, Electronic_Gain
     text_size = 10
     text_font ="Helvetica"
     button_height = 2
@@ -629,7 +641,7 @@ def setup_maths_frame():
     analysis_frame = ttk.LabelFrame(root, text="Analysis")
     analysis_frame.place(rely = .05, relx = .85)
      
-    analysis_button = tk.Button(analysis_frame,text = 'Analyse',command = Big_Maths)
+    analysis_button = tk.Button(analysis_frame,text = 'Analyse',command = Big_Maths,state = tk.DISABLED)
     analysis_button.config( height = button_height, width = button_width)
     analysis_button.grid(column = 0,row = 0,columnspan = 1)
     
@@ -639,18 +651,21 @@ def setup_maths_frame():
     Electronic_Gain.insert(1,string = str(default.ELEC_gain))
     Electronic_Gain_l=tk.Label(analysis_frame, text = 'Electronic Gain:',font=(text_font, text_size))
     Electronic_Gain_l.grid(column = 0,row = 3)
-
+    widgets.disable_on_mafs.append(Electronic_Gain)
+    
     ADC = tk.Entry(analysis_frame,width = 10)
     ADC.grid(column = 1,row = 2)
     ADC.insert(1,string = str(default.ADC_calibration))
     ADC_l=tk.Label(analysis_frame, text = ('ADC [{0}]:').format(default.ADC_unit[1]),font=(text_font, text_size))
     ADC_l.grid(column = 0,row = 2)
+    widgets.disable_on_mafs.append(ADC)
 
     Single_Peak_Mode_Only = tk.BooleanVar()
     Single_Peak_Mode_Only.set(False)
     Single_Peak_Mode_Only_CB = tk.Checkbutton(analysis_frame, text="Single Peak Only",command = Mode_Switch, variable = Single_Peak_Mode_Only,state = tk.DISABLED)
     Single_Peak_Mode_Only_CB.grid(column=1, row = 0,columnspan = 1)
     widgets.enable_on_load.append(Single_Peak_Mode_Only_CB)
+    widgets.disable_on_mafs.append(Single_Peak_Mode_Only_CB)
     
     Progress_Bar = ttk.Progressbar(analysis_frame,length = 200, orient = tk.HORIZONTAL, mode = 'determinate')
     Progress_Bar.grid(row=1, column = 0, columnspan = 2,pady = 10)
@@ -728,17 +743,17 @@ def settings():
     
     text_label('Default Sigma',0,1)
     text_label('ADC',0,2,sticky = 'e')
-    text_label('electronic Gain',0,3)
-    text_label('db',3,3)
+    text_label('Electronic Gain',0,3)
+    text_label('dB',3,3)
     text_label('n/a',3,1)
-    text_label('FC',3,2)
+    text_label('fC',3,2)
     text_label('Value',2,0,pady = 3)
     text_label('Unit',3,0,padx = 10)
     
     trunk.title('Settings')
     trunk.resizable(False, False)
     
-    
+
     Electronic_Gain = tk.Entry(trunk,width = 10,font=(text_font, text_size))
     Electronic_Gain.grid(column = 2,row = 3)
     Electronic_Gain.insert(1,string = str(default.ELEC_gain))
