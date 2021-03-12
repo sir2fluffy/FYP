@@ -21,18 +21,19 @@ root = tk.Tk()
 
 
 # compile  a list of all .txt and .csv files in the Data folder
-
-Data_files = []
-for file in listdir('Data'):
-    if isfile(join('Data', file)) and file[-4:]=='.csv' or isfile(join('Data', file)) and file[-4:]=='.txt':
-        Data_files.append(file)
+def read_data_file():
+    global Data_files
+    Data_files = []
+    for file in listdir('Data'):
+        if isfile(join('Data', file)) and file[-4:]=='.csv' or isfile(join('Data', file)) and file[-4:]=='.txt':
+            Data_files.append(file)
         
-
+read_data_file()
 
 
 
 def write_factory():# resets the save file to default settings
-    config_file = open(join('Saved','config.txt'),'w')
+    config_file = open(join('Config','config.txt'),'w')
     config_file.write("40\n32\n100\nNone")
     config_file.close()
 
@@ -76,14 +77,14 @@ class Data:#stores useful chunks of data
 
 
 try: #trys to open save file, if it cant creates a new one and writes the default data to it
-    config_file = open(join('Saved','config.txt'),'r')
+    config_file = open(join('Config','config.txt'),'r')
 
 
 except:
     tk.messagebox.showerror("Error", "No save file, creating one")
     write_factory()
     
-    config_file = open(join('Saved','config.txt'),'r')
+    config_file = open(join('Config','config.txt'),'r')
 
 
 reader = config_file.readlines()#loads data from the save file
@@ -99,7 +100,7 @@ config_file.close()
     
     
 def Load_File(load_last = False): # this function loads the selected file
-
+    Remove_Coords(clear= True)
 
 
 
@@ -113,7 +114,7 @@ def Load_File(load_last = False): # this function loads the selected file
         
         
 
-        config_file = open(join('Saved','config.txt'),'r')
+        config_file = open(join('Config','config.txt'),'r')
         reader = config_file.readlines()#loads data from the save file
         name = str(reader[3])
         config_file.close()
@@ -176,14 +177,14 @@ def Load_File(load_last = False): # this function loads the selected file
             
             
     if load_last == False:#if load last is file saves it to the file
-        config_file = open(join('Saved','config.txt'),'r')
+        config_file = open(join('Config','config.txt'),'r')
         reader = config_file.readlines()#loads data from the save file
         adc_entry = int(reader[0])#reads the first 3 lines
         elec_entry = int(reader[1])
         stdev_entry = int(reader[2])
         file_info.previous_load = str(reader[3])
         config_file.close()
-        config_file = open(join('Saved','config.txt'),'w')
+        config_file = open(join('Config','config.txt'),'w')
         
         last=str(name)#
         
@@ -220,6 +221,7 @@ def Load_File(load_last = False): # this function loads the selected file
     canvas.draw()
     
     if Data.already_loaded == True:
+
         toolbar.destroy()
         toolbar = NavigationToolbar2Tk(canvas,root) 
         toolbar.update() 
@@ -271,6 +273,9 @@ def Update():
         
 def Add_Coords():
     global remove_button, add_button, clear_button
+    if Data.current_coords  == []:
+        tk.messagebox.showerror('Error','No coordinates selected')
+        return
     if Data.disable == True:
         return
     if Data.current_coords != None and len(Data.peak_coords) < default.max_peaks:
@@ -559,7 +564,7 @@ text_font ="Helvetica"
 root.title('PPP')
 root.state('zoomed')
 def credit():
-    tk.messagebox.showinfo("Credit", "Program made by Charles V Yelland as part of a final year project for the University of Sussex")
+    tk.messagebox.showinfo("Credit", "Program written by Charles V Yelland as part of a final year project for the University of Sussex")
     
 def setup_fit_frame():#setting up the fit frame
     text_size = 10
@@ -574,12 +579,12 @@ def setup_fit_frame():#setting up the fit frame
     clear_button = tk.Button(fit_frame,text = 'Clear',state = tk.DISABLED, command = lambda: Remove_Coords(clear=(True)))
     clear_button.config( height = button_height, width = button_width)
     clear_button.grid(column = 0,row = 0)
-    widgets.enable_on_load.append(clear_button)
+    #widgets.enable_on_load.append(clear_button)
     
     remove_button = tk.Button(fit_frame,text = 'Remove',command = Remove_Coords)
     remove_button.config( height = button_height, width = button_width,state = tk.DISABLED)
     remove_button.grid(column = 1,row = 0)
-    widgets.enable_on_load.append(remove_button)
+   # widgets.enable_on_load.append(remove_button)
     
     add_button = tk.Button(fit_frame,text = 'Add', command = Add_Coords)
     add_button.config( height = button_height, width = button_width,state = tk.DISABLED)
@@ -601,11 +606,18 @@ def setup_fit_frame():#setting up the fit frame
     saved_recent_coords_l=tk.Label(fit_frame, textvariable = saved_recent_coords,font=(text_font, text_size),state = tk.DISABLED)
     saved_recent_coords_l.grid(column = 1, row = 2,columnspan =2,sticky = 'n')
     widgets.enable_on_load.append(saved_recent_coords_l)
+
+def refresh():
+    global option_menu_title, Data_files
+    read_data_file()
+    file_frame.destroy()
+    setup_file_frame()
+    
     
 def setup_file_frame():#add settings frame
     text_size = 10
     text_font ="Helvetica"
-    global option_menu_title
+    global option_menu_title, Data_files, file_frame 
     button_height = 2
     button_width = 10
     file_frame = ttk.LabelFrame(root, text="File")
@@ -620,15 +632,19 @@ def setup_file_frame():#add settings frame
     option_menu_title.set(Data_files[0])
     option_menu = tk.OptionMenu(file_frame,option_menu_title,*Data_files)
     option_menu.config( height = button_height, width = 60)
-    option_menu.grid(column = 0, row = 1)
+    option_menu.grid(column = 1, row = 0)
     
-    widgets.disable_on_load.append(option_menu)
+    #widgets.disable_on_load.append(option_menu)
     
     
     Load_Button = tk.Button(file_frame ,text='Load',font=(text_font, text_size))
     Load_Button.config( height = button_height, width = button_width,command = Load_File)
-    Load_Button.grid(column = 1, row = 1)
-    widgets.disable_on_load.append(Load_Button)
+    Load_Button.grid(column = 2, row = 0)
+    #widgets.disable_on_load.append(Load_Button)
+    
+    Refresh_Button = tk.Button(file_frame ,text='↺',font=(text_font, 16))
+    Refresh_Button.config( height = 0, width = 3,command = refresh)
+    Refresh_Button.grid(column = 0, row = 0)
     
     #add settings tab
 def setup_maths_frame():
@@ -692,6 +708,7 @@ def setup_info_frame():
 # call all the set up fucntions just to keep it neat tbh
 
 def settings():
+
     def reset():
         write_factory()
         tk.messagebox.showinfo("Settings", "Settings reset")
@@ -740,7 +757,7 @@ def settings():
     button_width = 13
     
     trunk = tk.Toplevel()
-    
+    trunk.focus_force()
     text_label('Default Sigma',0,1)
     text_label('ADC',0,2,sticky = 'e')
     text_label('Electronic Gain',0,3)
@@ -787,9 +804,26 @@ def settings():
 
     
 
-    trunk.iconphoto(False, tk.PhotoImage(file='Saved\settings_icon.png'))
+    trunk.iconphoto(False, tk.PhotoImage(file='Config\settings_icon.png'))
     trunk.mainloop()
-
+def show_help():
+    print('fds')
+ 
+    try:
+        trunk.destory()
+    except:
+        print('ggg')
+    else:
+        trunk.destory()
+    
+    
+    
+    
+    
+    
+    
+    
+    
 setup_maths_frame()
 setup_fit_frame()
 setup_file_frame()
@@ -816,11 +850,17 @@ filemenu.add_command(label="Settings",command = settings)
 filemenu.add_command(label="Exit")
 filemenu.add_separator()
 filemenu.add_command(label="Credit",command = credit)
+#filemenu.add_separator()
+
+
+
+
+#filemenu.add_command(label="Help",command = show_help) #do later
 menubar.add_cascade(label="File", menu=filemenu)
 
 
 
-root.iconphoto(False, tk.PhotoImage(file='Saved\icon.png'))
+root.iconphoto(False, tk.PhotoImage(file='Config\icon.png'))
 
 
 root.config(menu=menubar)
