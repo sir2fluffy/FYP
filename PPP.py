@@ -71,6 +71,8 @@ class Data:#stores useful chunks of data
     disable = False
     created_imgs = []
     already_loaded = False
+    fit_paras = []
+    fit_errors = [] # centers is second
 
 
 
@@ -202,6 +204,7 @@ def Load_File(load_last = False): # this function loads the selected file
 
     file_info.size = size
     file_info.rows = row_count
+ 
     file_info.name = name
     if len(name) > 20:
         name = name[:20] + '...'
@@ -337,7 +340,7 @@ def Big_Maths():# add a bit to read the settings
 
     def Single_Fit(data, height, center, stdev):
 
-        return(sc.curve_fit(Gaussian,data[:,0],data[:,1],p0=(height,center,stdev))[0])
+        return(sc.curve_fit(Gaussian,data[:,0],data[:,1],p0=(height,center,stdev)))
 
     if Single_Peak_Mode_Only.get() == True:
             lower_bound = Data.peak_coords[0][0] 
@@ -417,7 +420,7 @@ def Big_Maths():# add a bit to read the settings
         differnce = np.average(differnces)/2
         
         # now we cycle though each peak and make a single gaussian fit for each
-        fit_paras = []
+        
         for peak in range(0,len(Data.peak_coords)):
             center = centers[peak]
             height = heights[peak]
@@ -431,16 +434,26 @@ def Big_Maths():# add a bit to read the settings
                     data = np.r_[data,[[x,y]]]
                 else:
                     data = np.r_[data,[[x,0]]]
-            fit_para = Single_Fit(data,height,center,default.Stdev)
-            fit_paras.append(fit_para)
+            fit_para,covp = Single_Fit(data,height,center,default.Stdev)
+          #  print(covp)
+            (Data.fit_paras).append(fit_para)
+            (Data.fit_errors).append(covp[1,1])
             update_progress(peak)
         multi_fit = pl.figure()
         pl.plot(array[:,0],array[:,1],'+')
         
+        
+        error = 0
         update_progress(None,flat_amount = 0)
-        for i,para in enumerate(fit_paras):
+        for i,para in enumerate(Data.fit_paras):
             update_progress(i)
             pl.plot(array[:,0],Gaussian(array[:,0],*para),color = 'red')
+            error += int(para[2])
+        
+     #   print(file_info.rows, error)
+        error = (error/np.sqrt(int(file_info.rows)))
+    
+        # this cant be right they're tiny
             
         pl.title('Multi Fit')
 
@@ -462,7 +475,7 @@ def Big_Maths():# add a bit to read the settings
         for index,x in enumerate(array[:,0]):
             # add counter here
             temp = 0
-            for para in fit_paras:
+            for para in Data.fit_paras:
                 temp = temp + Gaussian(x,*para)
             y_total.append(temp)
         total_multi_fit = pl.figure()    
@@ -484,15 +497,27 @@ def Big_Maths():# add a bit to read the settings
         peak_to_peak = pl.figure()
         pl.title('Peak to Peak seperation')
         pl.plot(x,y,'.')
-        
-        coeff = np.polynomial.polynomial.polyfit(x,y,1)# 
 
-        intercept, grad = int(coeff[0]), int(coeff[1])
-
-        
         def stright_line(x,m,c):
             y = (m*x) + c
-            return y
+            return y  
+
+
+        #coeff = np.polynomial.polynomial.polyfit(x,y,1)# 
+        
+        
+        
+        popt_sl, covp_sl = sc.curve_fit(stright_line,x,y,sigma =Data.fit_errors)#,p0=(height,center,stdev)))
+        
+        intercept, grad = popt_sl[1], popt_sl[0]
+        print(covp_sl)
+        
+        sigma_m = np.sqrt(covp_sl[0,0])
+        
+        print('sigma_m',sigma_m)#still too small
+
+    
+
         y2 = []
         for x_ in x:
             y = (grad*x_) + intercept
@@ -517,7 +542,8 @@ def Big_Maths():# add a bit to read the settings
             y.append(centers[i])
 
 
-
+        
+        
         #then  make a pop up
         def idiot_proof(text,string):
             try:
@@ -541,13 +567,14 @@ def Big_Maths():# add a bit to read the settings
         gain_intr = str(round(gain_intr,0))[:-2]
         
         
+        #err = mean sigma for each gaussian / sqrt n 
         
-        
-        
-        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, '3') 
+        error = np.sqrt(error**2 + sigma_m**2)
+        error = round(error,0)
+        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, error) 
         
         tk.messagebox.showinfo("Results", alert_message)
-        pyperclip.copy(alert_message)
+        pyperclip.copy(('{0}\t{1}'.format(gain_intr, error)))
         
         
 
@@ -555,8 +582,11 @@ def Big_Maths():# add a bit to read the settings
 
     
         Progress_Bar['value'] = 0
+        for widget in widgets.disable_on_mafs:#enable and disable required widgets
+            widget.config(state="normal")
 
-       
+        Data.fit_errors = []
+        Data.fit_paras = []
 
 text_size = 10
 text_font ="Helvetica"
@@ -730,7 +760,7 @@ def settings():
         
         
         
-        config_file = open(join('Saved','config.txt'),'w')
+        config_file = open(join('Config','config.txt'),'w')
         
         last=str(file_info.previous_load)
         
@@ -738,8 +768,8 @@ def settings():
         
         config_file.write(("{0}\n{1}\n{2}\n{3}").format(adc_entry.get(),elec_entry.get(),stdev_entry.get(),last))
         config_file.close()
-        
-        
+        trunk.destroy()
+        tk.messagebox.showinfo("Settings", "Settings saved")
         
         
 
@@ -787,6 +817,7 @@ def settings():
     
     
     Save_B = tk.Button(trunk, text = 'Save',command = lambda: save_settings(ADC_Calibration,Default_sigma,Electronic_Gain),font=(text_font, text_size))
+    
     Save_B.config( height = button_height, width = button_width)
     Save_B.grid(column = 0, row = 4, columnspan = 2)
     
@@ -806,7 +837,10 @@ def settings():
 
     trunk.iconphoto(False, tk.PhotoImage(file='Config\settings_icon.png'))
     trunk.mainloop()
-def show_help():
+    
+    
+    
+def show_help():# make this work
     print('fds')
  
     try:
@@ -817,7 +851,8 @@ def show_help():
         trunk.destory()
     
     
-    
+def Exit():
+    root.destroy()
     
     
     
@@ -847,7 +882,7 @@ filemenu.add_command(label="Load Last",command = lambda: Load_File(load_last=Tru
 filemenu.add_separator()
 
 filemenu.add_command(label="Settings",command = settings)
-filemenu.add_command(label="Exit")
+filemenu.add_command(label="Exit",command = Exit)
 filemenu.add_separator()
 filemenu.add_command(label="Credit",command = credit)
 #filemenu.add_separator()
