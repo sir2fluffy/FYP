@@ -34,7 +34,7 @@ read_data_file()
 
 def write_factory():# resets the save file to default settings
     config_file = open(join('Config','config.txt'),'w')
-    config_file.write("40\n32\n100\nNone")
+    config_file.write("40\n32\n100\nNone\nFalse")
     config_file.close()
 
 class default:#when done add saving ability
@@ -44,6 +44,7 @@ class default:#when done add saving ability
     ELEC_gain = 32
     max_peaks = 15
     Stdev = 100
+    auto_zoom = False
     
 class factory:#when done add saving ability
     # stores the adc unit as a si conversion and the symbol
@@ -52,6 +53,7 @@ class factory:#when done add saving ability
     ELEC_gain = 32
     max_peaks = 15
     Stdev = 100
+    auto_zoom = False
     
 
 class file_info:# the info about the laoded file is stored here
@@ -77,26 +79,27 @@ class Data:#stores useful chunks of data
 
 
 
-
-try: #trys to open save file, if it cant creates a new one and writes the default data to it
-    config_file = open(join('Config','config.txt'),'r')
-
-
-except:
-    tk.messagebox.showerror("Error", "No save file, creating one")
-    write_factory()
+def load_defaults():
+    try: #trys to open save file, if it cant creates a new one and writes the default data to it
+        config_file = open(join('Config','config.txt'),'r')
     
-    config_file = open(join('Config','config.txt'),'r')
-
-
-reader = config_file.readlines()#loads data from the save file
-default.ADC_calibration = int(reader[0])
-default.ELEC_gain = int(reader[1])
-default.Stdev = int(reader[2])
-file_info.previous_load = str(reader[3])
-
-
-config_file.close()
+    
+    except:
+        tk.messagebox.showerror("Error", "No save file, creating one")
+        write_factory()
+        
+        config_file = open(join('Config','config.txt'),'r')
+    
+    
+    reader = config_file.readlines()#loads data from the save file
+    default.ADC_calibration = int(reader[0])
+    default.ELEC_gain = int(reader[1])
+    default.Stdev = int(reader[2])
+    file_info.previous_load = str(reader[3])
+    default.auto_zoom = bool(reader[4])
+    
+    
+    config_file.close()
 
         
     
@@ -185,12 +188,13 @@ def Load_File(load_last = False): # this function loads the selected file
         elec_entry = int(reader[1])
         stdev_entry = int(reader[2])
         file_info.previous_load = str(reader[3])
+        auto_zoom = bool(reader[4])
         config_file.close()
         config_file = open(join('Config','config.txt'),'w')
         
         last=str(name)#
         
-        config_file.write(("{0}\n{1}\n{2}\n{3}").format(adc_entry,elec_entry,stdev_entry,last))# writes to the file with the enw last load
+        config_file.write(("{0}\n{1}\n{2}\n{3}\n{4}").format(adc_entry,elec_entry,stdev_entry,last,auto_zoom))# writes to the file with the enw last load
         config_file.close()
     
     
@@ -214,10 +218,30 @@ def Load_File(load_last = False): # this function loads the selected file
     #sets the file info box to correct stuff
 
 
-        
-        
+
+
+    
     fig = pl.Figure(figsize = (16, 9))
-    plot1 = fig.add_subplot(111) 
+    plot1 = fig.add_subplot(111)
+    
+    x_min,x_max = True, True
+    if default.auto_zoom == True:
+        for index in range(1, file_info.rows):
+            x = int(array[index,0])
+            y = int(array[index,1])
+            if y != 0.0 and x_min == True:
+                x_min = x - 50
+                
+
+            index = file_info.rows - index
+            x = int(array[index,0])
+            y = int(array[index,1])
+            
+            if y != 0.0 and x_max == True:
+                x_max = x + 50
+                
+
+        plot1.set_xlim(x_min,x_max)
     plot1.plot(array[:,0],array[:,1])
     global toolbar
     canvas = FigureCanvasTkAgg(fig, master = root)   
@@ -420,7 +444,7 @@ def Big_Maths():# add a bit to read the settings
         differnce = np.average(differnces)/2
         
         # now we cycle though each peak and make a single gaussian fit for each
-        
+        temp_error = []
         for peak in range(0,len(Data.peak_coords)):
             center = centers[peak]
             height = heights[peak]
@@ -437,8 +461,10 @@ def Big_Maths():# add a bit to read the settings
             fit_para,covp = Single_Fit(data,height,center,default.Stdev)
           #  print(covp)
             (Data.fit_paras).append(fit_para)
-            (Data.fit_errors).append(covp[1,1])
+            temp_error.append(covp[1,1])
+        
             update_progress(peak)
+        Data.fit_errors.append(temp_error) #add sqrt if needecd
         multi_fit = pl.figure()
         pl.plot(array[:,0],array[:,1],'+')
         
@@ -507,14 +533,16 @@ def Big_Maths():# add a bit to read the settings
         
         
         
-        popt_sl, covp_sl = sc.curve_fit(stright_line,x,y,sigma =Data.fit_errors)#,p0=(height,center,stdev)))
+        popt_sl, covp_sl = sc.curve_fit(stright_line,x,y,sigma =Data.fit_errors[0])#,p0=(height,center,stdev)))
         
         intercept, grad = popt_sl[1], popt_sl[0]
         print(covp_sl)
         
-        sigma_m = np.sqrt(covp_sl[0,0])
+        sigma_grad = np.sqrt(covp_sl[0,0])
         
-        print('sigma_m',sigma_m)#still too small
+        print('sigma_m',sigma_grad)#still too small converting to sigma gain
+        
+        
 
     
 
@@ -560,18 +588,19 @@ def Big_Maths():# add a bit to read the settings
         gain_elec = idiot_proof(Electronic_Gain.get(),'electronic gain')
         
         charge = Adc_Calibration_Value*grad*Adc_Calibration_Unit
-        print(grad,': grad')
+
         gain_elec_factor = 10**(gain_elec/20)
         
         gain_intr = charge/(1.60217662e-19*gain_elec_factor)
         gain_intr = str(round(gain_intr,0))[:-2]
         
         
-        #err = mean sigma for each gaussian / sqrt n 
-        
-        error = np.sqrt(error**2 + sigma_m**2)
-        error = round(error,0)
-        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, error) 
+
+        sigma_gain = ((Adc_Calibration_Value*Adc_Calibration_Unit*sigma_grad)/(1.60217662e-19*gain_elec_factor))
+        print(f"{sigma_gain} sigma gain")
+        sigma_gain = round(sigma_gain,0)
+
+        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, sigma_gain) 
         
         tk.messagebox.showinfo("Results", alert_message)
         pyperclip.copy(('{0}\t{1}'.format(gain_intr, error)))
@@ -743,8 +772,8 @@ def settings():
         write_factory()
         tk.messagebox.showinfo("Settings", "Settings reset")
         trunk.destroy()
-        
-    def save_settings(adc_entry,stdev_entry,elec_entry):
+        load_defaults()
+    def save_settings(adc_entry,stdev_entry,elec_entry,auto_zoom_entry):
         def idiot_proof(entry):
             try:
                 int(entry.get())
@@ -766,9 +795,10 @@ def settings():
         
         
         
-        config_file.write(("{0}\n{1}\n{2}\n{3}").format(adc_entry.get(),elec_entry.get(),stdev_entry.get(),last))
+        config_file.write(("{0}\n{1}\n{2}\n{3}{4}").format(adc_entry.get(),elec_entry.get(),stdev_entry.get(),last,auto_zoom_entry))
         config_file.close()
         trunk.destroy()
+        load_defaults()
         tk.messagebox.showinfo("Settings", "Settings saved")
         
         
@@ -800,7 +830,14 @@ def settings():
     trunk.title('Settings')
     trunk.resizable(False, False)
     
-
+    
+    Auto_Zoom = tk.BooleanVar()
+    Auto_Zoom.set(default.auto_zoom)
+    Auto_Zoom_CB = tk.Checkbutton(trunk, variable = Auto_Zoom,font=(text_font, text_size))
+    Auto_Zoom_CB.grid(column=2, row = 4,columnspan = 1,pady = 5)
+    text_label('Auto Zoom',0,4)
+    
+    
     Electronic_Gain = tk.Entry(trunk,width = 10,font=(text_font, text_size))
     Electronic_Gain.grid(column = 2,row = 3)
     Electronic_Gain.insert(1,string = str(default.ELEC_gain))
@@ -816,14 +853,14 @@ def settings():
     Default_sigma.insert(1,string = str(default.Stdev))
     
     
-    Save_B = tk.Button(trunk, text = 'Save',command = lambda: save_settings(ADC_Calibration,Default_sigma,Electronic_Gain),font=(text_font, text_size))
+    Save_B = tk.Button(trunk, text = 'Save',command = lambda: save_settings(ADC_Calibration,Default_sigma,Electronic_Gain,Auto_Zoom.get()),font=(text_font, text_size))
     
     Save_B.config( height = button_height, width = button_width)
-    Save_B.grid(column = 0, row = 4, columnspan = 2)
+    Save_B.grid(column = 0, row = 5, columnspan = 2)
     
     Reset_B = tk.Button(trunk, text = 'Reset',command = reset,font=(text_font, text_size))
     Reset_B.config( height = button_height, width = button_width)
-    Reset_B.grid(column = 2, row = 4, columnspan = 2,pady = 15)
+    Reset_B.grid(column = 2, row = 5, columnspan = 2,pady = 15)
 
 
     prefixes_dict = {'n':10e-9,'p':10e-12,'f':10e-15,'a':10e-18}
