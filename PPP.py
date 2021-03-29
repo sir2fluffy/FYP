@@ -34,7 +34,7 @@ read_data_file()
 
 def write_factory():# resets the save file to default settings
     config_file = open(join('Config','config.txt'),'w')
-    config_file.write("40\n32\n100\nNone\nFalse")
+    config_file.write("40\n32\n100\nNone\0")
     config_file.close()
 
 class default:#when done add saving ability
@@ -96,12 +96,17 @@ def load_defaults():
     default.ELEC_gain = int(reader[1])
     default.Stdev = int(reader[2])
     file_info.previous_load = str(reader[3])
-    default.auto_zoom = bool(reader[4])
     
+    
+    print((reader[4]))
+    default.auto_zoom = bool(int(reader[4]))
+    
+    
+    print(default.auto_zoom,(reader[4]))
     
     config_file.close()
 
-        
+load_defaults()  
     
     
 def Load_File(load_last = False): # this function loads the selected file
@@ -600,10 +605,15 @@ def Big_Maths():# add a bit to read the settings
         print(f"{sigma_gain} sigma gain")
         sigma_gain = round(sigma_gain,0)
 
-        alert_message = 'Gain: {0} ± {1}'.format(gain_intr, sigma_gain) 
+        
+        sigma_0 = (Data.fit_paras[0])[2]
+        sigma_1 = (Data.fit_paras[1])[2]
+        resolution_power = sigma_grad/np.sqrt((sigma_1**2) - (sigma_0**2))
+        
+        alert_message = 'Gain: {0} ± {1}\nR: {2}'.format(gain_intr, sigma_gain,resolution_power) 
         
         tk.messagebox.showinfo("Results", alert_message)
-        pyperclip.copy(('{0}\t{1}'.format(gain_intr, error)))
+        pyperclip.copy(('{0}\t{1}\t{2}'.format(gain_intr, sigma_gain,resolution_power)))
         
         
 
@@ -788,18 +798,19 @@ def settings():
         
         
         
-        
+        auto_zoom_entry = int(auto_zoom_entry)
         config_file = open(join('Config','config.txt'),'w')
         
         last=str(file_info.previous_load)
         
         
         
-        config_file.write(("{0}\n{1}\n{2}\n{3}{4}").format(adc_entry.get(),elec_entry.get(),stdev_entry.get(),last,auto_zoom_entry))
+        config_file.write(("{0}\n{1}\n{2}\n{3}{4}").format( adc_entry.get(),elec_entry.get(),stdev_entry.get(),last,auto_zoom_entry))
         config_file.close()
         trunk.destroy()
-        load_defaults()
+        
         tk.messagebox.showinfo("Settings", "Settings saved")
+        load_defaults()
         
         
 
@@ -878,7 +889,7 @@ def settings():
     
     
 def show_help():# make this work
-    print('fds')
+    tk.messagebox.showinfo('Help','Write something here, maybe a youtube video?')
  
     try:
         trunk.destory()
@@ -922,12 +933,12 @@ filemenu.add_command(label="Settings",command = settings)
 filemenu.add_command(label="Exit",command = Exit)
 filemenu.add_separator()
 filemenu.add_command(label="Credit",command = credit)
-#filemenu.add_separator()
+filemenu.add_separator()
 
 
 
 
-#filemenu.add_command(label="Help",command = show_help) #do later
+filemenu.add_command(label="Help",command = show_help) #do later
 menubar.add_cascade(label="File", menu=filemenu)
 
 
