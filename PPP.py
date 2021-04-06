@@ -10,9 +10,16 @@ import tkinter.ttk as ttk
 import sys, csv, pyperclip
 import numpy as np
 import pylab as pl
-from os import listdir, stat, startfile
-from os.path import isfile, join
+from os import listdir, stat
 
+
+from os.path import isfile, join
+import platform
+
+OS_name = platform.system()
+
+if OS_name != "Darwin":
+    from os import startfile
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from scipy import optimize as sc
@@ -90,7 +97,7 @@ def load_defaults():
         
         config_file = open(join('Config','config.txt'),'r')
     
-    
+    print(config_file)
     reader = config_file.readlines()#loads data from the save file
     default.ADC_calibration = int(reader[0])
     default.ELEC_gain = int(reader[1])
@@ -921,7 +928,8 @@ root.bind('<BackSpace>', Remove_Coords2)
 
 menubar = tk.Menu(root)
 filemenu = tk.Menu(menubar, tearoff=0)
-filemenu.add_command(label="Open Folder",command = lambda: startfile("Data"))
+if OS_name != "Darwin":
+    filemenu.add_command(label="Open Folder",command = lambda: startfile("Data"))
 
 
 
@@ -942,8 +950,10 @@ filemenu.add_command(label="Help",command = show_help) #do later
 menubar.add_cascade(label="File", menu=filemenu)
 
 
-
-root.iconphoto(False, tk.PhotoImage(file='Config\icon.png'))
+if OS_name == Darwin:
+    root.iconphoto(False, tk.PhotoImage(file='Config/icon.png'))
+else:
+    root.iconphoto(False, tk.PhotoImage(file='Config\icon.png'))
 
 
 root.config(menu=menubar)
