@@ -2,4 +2,4 @@
 32
 100
 multipeak_V55.1_gain32_15032021_histo.txt
-True
+1

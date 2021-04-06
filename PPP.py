@@ -106,7 +106,7 @@ def load_defaults():
     
     
 
-    default.auto_zoom = bool(int(reader[4]))
+    default.auto_zoom = (int(reader[4]))
     
     
 
