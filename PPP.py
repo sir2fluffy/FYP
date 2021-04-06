@@ -208,7 +208,7 @@ def Load_File(load_last = False): # this function loads the selected file
         config_file = open(join('Config','config.txt'),'w')
         
         last=str(name)#
-        
+        print('last:',last)
         config_file.write(("{0}\n{1}\n{2}\n{3}\n{4}").format(adc_entry,elec_entry,stdev_entry,last,auto_zoom))# writes to the file with the enw last load
         config_file.close()
     
@@ -997,7 +997,7 @@ if OS_name != "Darwin":
 else:
     setup_file_menu_mac()
 
-setup_file_menu_mac()
+
 
 if OS_name == 'Darwin':
     root.iconphoto(False, tk.PhotoImage(file='Config/icon.png'))
