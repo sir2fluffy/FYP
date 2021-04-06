@@ -18,8 +18,8 @@ import platform
 
 OS_name = platform.system()
 
-if OS_name != "Darwin":
-    from os import startfile
+
+    
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from scipy import optimize as sc
@@ -41,7 +41,7 @@ read_data_file()
 
 def write_factory():# resets the save file to default settings
     config_file = open(join('Config','config.txt'),'w')
-    config_file.write("40\n32\n100\nNone\0")
+    config_file.write("40\n32\n100\nNone\n0")
     config_file.close()
 
 class default:#when done add saving ability
@@ -97,7 +97,7 @@ def load_defaults():
         
         config_file = open(join('Config','config.txt'),'r')
     
-    print(config_file)
+
     reader = config_file.readlines()#loads data from the save file
     default.ADC_calibration = int(reader[0])
     default.ELEC_gain = int(reader[1])
@@ -105,11 +105,11 @@ def load_defaults():
     file_info.previous_load = str(reader[3])
     
     
-    print((reader[4]))
+
     default.auto_zoom = bool(int(reader[4]))
     
     
-    print(default.auto_zoom,(reader[4]))
+
     
     config_file.close()
 
@@ -134,10 +134,13 @@ def Load_File(load_last = False): # this function loads the selected file
         config_file = open(join('Config','config.txt'),'r')
         reader = config_file.readlines()#loads data from the save file
         name = str(reader[3])
+
         config_file.close()
-        if name == 'None':
+        if name == 'None\n':
             tk.messagebox.showerror("Error", "No last file saved")
             return
+        else:
+            path = join('Data',name)
 
 
 
@@ -151,7 +154,7 @@ def Load_File(load_last = False): # this function loads the selected file
     
     
     
-    
+
     
     if file_type == '.csv':
         
@@ -215,9 +218,10 @@ def Load_File(load_last = False): # this function loads the selected file
         widget.config(state="disabled")        
     for widget in widgets.enable_on_load:
         widget.config(state="normal")     
-        
-    size = stat(path).st_size
 
+    size = stat(path).st_size
+    
+    
     file_info.size = size
     file_info.rows = row_count
  
@@ -384,7 +388,8 @@ def Big_Maths():# add a bit to read the settings
             difference = upper_bound - lower_bound
             data = np.zeros((0,2))
             if upper_bound <= lower_bound:
-                print('lower bound is larger than the upper bound')
+                pass
+                tk.messagebox.showinfo('lower bound is larger than the upper bound','Error')
             for index in range(0,Data.lines):
                 if array[index,0] >= lower_bound and array[index,0] <= upper_bound:
                     x = array[index,0]
@@ -392,7 +397,7 @@ def Big_Maths():# add a bit to read the settings
                     data = np.r_[data,[[x,y]]]
             
             fit_para = Single_Fit(data,Data.peak_coords[1][1],Data.peak_coords[1][0],default.Stdev)
-            print(('height: {0} \ncenter: {1} \nstdev: {2}').format(*fit_para))
+           # print(('height: {0} \ncenter: {1} \nstdev: {2}').format(*fit_para))
                                                                 
             
             
@@ -548,11 +553,11 @@ def Big_Maths():# add a bit to read the settings
         popt_sl, covp_sl = sc.curve_fit(stright_line,x,y,sigma =Data.fit_errors[0])#,p0=(height,center,stdev)))
         
         intercept, grad = popt_sl[1], popt_sl[0]
-        print(covp_sl)
+        #print(covp_sl)
         
         sigma_grad = np.sqrt(covp_sl[0,0])
         
-        print('sigma_m',sigma_grad)#still too small converting to sigma gain
+        #print('sigma_m',sigma_grad)#still too small converting to sigma gain
         
         
 
@@ -609,7 +614,7 @@ def Big_Maths():# add a bit to read the settings
         
 
         sigma_gain = ((Adc_Calibration_Value*Adc_Calibration_Unit*sigma_grad)/(1.60217662e-19*gain_elec_factor))
-        print(f"{sigma_gain} sigma gain")
+        #print(f"{sigma_gain} sigma gain")
         sigma_gain = round(sigma_gain,0)
 
         
@@ -888,9 +893,12 @@ def settings():
         temp.append(('{0} [{1}]').format(prefix,prefixes_dict[prefix]))
 
 
-    
+    if OS_name =='Darwin':
+        trunk.iconphoto(False, tk.PhotoImage(file='Config/settings_icon.png'))
+    else:
+        trunk.iconphoto(False, tk.PhotoImage(file='Config\settings_icon.png'))
 
-    trunk.iconphoto(False, tk.PhotoImage(file='Config\settings_icon.png'))
+
     trunk.mainloop()
     
     
@@ -928,29 +936,70 @@ root.bind('<BackSpace>', Remove_Coords2)
 
 menubar = tk.Menu(root)
 filemenu = tk.Menu(menubar, tearoff=0)
-if OS_name != "Darwin":
+
+    
+def setup_file_menu():
+    from os import startfile
     filemenu.add_command(label="Open Folder",command = lambda: startfile("Data"))
 
 
 
-filemenu.add_command(label="Load Last",command = lambda: Load_File(load_last=True))
+    filemenu.add_command(label="Load Last",command = lambda: Load_File(load_last=True))
+    
+    filemenu.add_separator()
+    
+    filemenu.add_command(label="Settings",command = settings)
+    filemenu.add_command(label="Exit",command = Exit)
+    filemenu.add_separator()
+    filemenu.add_command(label="Credits",command = credit)
+    filemenu.add_separator()
+    
+    
+    
+    
+    filemenu.add_command(label="Help",command = show_help) #do later
+    menubar.add_cascade(label="File", menu=filemenu)
 
-filemenu.add_separator()
 
-filemenu.add_command(label="Settings",command = settings)
-filemenu.add_command(label="Exit",command = Exit)
-filemenu.add_separator()
-filemenu.add_command(label="Credit",command = credit)
-filemenu.add_separator()
+def setup_file_menu_mac():#setting up the fit frame
+    text_size = 10
+    text_font ="Helvetica"
+    
+    button_height = 2
+    button_width = 10
+    
+    fit_frame = ttk.LabelFrame(root, text="Menu")
+    fit_frame.place(rely = .65, relx = .5)
+     
+    load_last_buttonn = tk.Button(fit_frame,text = 'Load Last', command = lambda: Load_File(load_last=True))
+    load_last_buttonn.config( height = button_height, width = button_width)
+    load_last_buttonn.grid(column = 0,row = 0)
+    
 
+    load_last_buttonn = tk.Button(fit_frame,text = 'Settings', command = settings)
+    load_last_buttonn.config( height = button_height, width = button_width)
+    load_last_buttonn.grid(column = 0,row = 1)
 
+    load_last_buttonn = tk.Button(fit_frame,text = 'Exit', command = Exit)
+    load_last_buttonn.config( height = button_height, width = button_width)
+    load_last_buttonn.grid(column = 0,row = 2)
+    
+    load_last_buttonn = tk.Button(fit_frame,text = 'Credits', command = credit)
+    load_last_buttonn.config( height = button_height, width = button_width)
+    load_last_buttonn.grid(column = 0,row = 3)
+    
+    load_last_buttonn = tk.Button(fit_frame,text = 'Help',command = show_help)
+    load_last_buttonn.config( height = button_height, width = button_width)
+    load_last_buttonn.grid(column = 0,row = 4)
 
+if OS_name != "Darwin":
+    setup_file_menu()
+else:
+    setup_file_menu_mac()
 
-filemenu.add_command(label="Help",command = show_help) #do later
-menubar.add_cascade(label="File", menu=filemenu)
+setup_file_menu_mac()
 
-
-if OS_name == Darwin:
+if OS_name == 'Darwin':
     root.iconphoto(False, tk.PhotoImage(file='Config/icon.png'))
 else:
     root.iconphoto(False, tk.PhotoImage(file='Config\icon.png'))
