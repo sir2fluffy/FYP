@@ -203,7 +203,7 @@ def Load_File(load_last = False): # this function loads the selected file
         elec_entry = int(reader[1])
         stdev_entry = int(reader[2])
         file_info.previous_load = str(reader[3])
-        auto_zoom = bool(reader[4])
+        auto_zoom = int(reader[4])
         config_file.close()
         config_file = open(join('Config','config.txt'),'w')
         
@@ -283,7 +283,7 @@ def Load_File(load_last = False): # this function loads the selected file
     pl.plot(array[:,0],array[:,1])
 
     pl.xlim(min(array[:,0]),max(array[:,0])/2)
-    pl.rcParams['figure.figsize']  = 16,9
+    pl.rcParams['figure.figsize']  = 6,4
     pl.savefig('Saved/fig0.png')
 
     pl.close(over_view)
@@ -854,7 +854,7 @@ def settings():
     trunk.resizable(False, False)
     
     
-    Auto_Zoom = tk.BooleanVar()
+    Auto_Zoom = tk.IntVar()
     Auto_Zoom.set(default.auto_zoom)
     Auto_Zoom_CB = tk.Checkbutton(trunk, variable = Auto_Zoom,font=(text_font, text_size))
     Auto_Zoom_CB.grid(column=2, row = 4,columnspan = 1,pady = 5)
@@ -907,11 +907,11 @@ def show_help():# make this work
     tk.messagebox.showinfo('Help','Write something here, maybe a youtube video?')
  
     try:
-        trunk.destory()
+        trunk.destroy()
     except:
-        print('ggg')
+        trunk.destroy()
     else:
-        trunk.destory()
+        trunk.destroy()
     
     
 def Exit():
