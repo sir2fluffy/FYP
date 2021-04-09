@@ -594,7 +594,7 @@ def Big_Maths():# add a bit to read the settings
             try:
                 number = int(text)
             except:
-                print(text = 'Number not entered in {0}'.format(string), title = 'You Idiot')
+                 tk.messagebox.showinfo('You Idiot','Number not entered in {0}'.format(string))
             else:
                 return number
             
