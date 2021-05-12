@@ -52,6 +52,9 @@ class default:#when done add saving ability
     max_peaks = 15
     Stdev = 100
     auto_zoom = False
+class zoom:
+    xmin = -200
+    xmax = 5000
     
 class factory:#when done add saving ability
     # stores the adc unit as a si conversion and the symbol
@@ -136,7 +139,8 @@ def Load_File(load_last = False): # this function loads the selected file
         name = str(reader[3])
 
         config_file.close()
-        if name == 'None\n':
+        name=name.replace('\n','')
+        if name == 'None':
             tk.messagebox.showerror("Error", "No last file saved")
             return
         else:
@@ -147,7 +151,7 @@ def Load_File(load_last = False): # this function loads the selected file
     else:
         name = option_menu_title.get()
     file_type = (name)[-4:]#get file type 
-        
+
         
 
     
@@ -186,7 +190,7 @@ def Load_File(load_last = False): # this function loads the selected file
         
         row_count = (len(reader))
         array = np.zeros((row_count,2))
-    
+
     
         for index,line in enumerate(reader):
 
@@ -208,7 +212,7 @@ def Load_File(load_last = False): # this function loads the selected file
         config_file = open(join('Config','config.txt'),'w')
         
         last=str(name)#
-        print('last:',last)
+   
         config_file.write(("{0}\n{1}\n{2}\n{3}\n{4}").format(adc_entry,elec_entry,stdev_entry,last,auto_zoom))# writes to the file with the enw last load
         config_file.close()
     
@@ -218,7 +222,7 @@ def Load_File(load_last = False): # this function loads the selected file
         widget.config(state="disabled")        
     for widget in widgets.enable_on_load:
         widget.config(state="normal")     
-
+    path = path.replace('\n','')
     size = stat(path).st_size
     
     
@@ -239,8 +243,11 @@ def Load_File(load_last = False): # this function loads the selected file
     
     fig = pl.Figure(figsize = (16, 9))
     plot1 = fig.add_subplot(111)
+    zoom.xmin = min(array[:,0])
+    zoom.xmax = max(array[:,0])
     
     x_min,x_max = True, True
+    x_lim = zoom.xmax = max(array[:,1])/20
     if default.auto_zoom == True:
         for index in range(1, file_info.rows):
             x = int(array[index,0])
@@ -253,9 +260,10 @@ def Load_File(load_last = False): # this function loads the selected file
             x = int(array[index,0])
             y = int(array[index,1])
             
-            if y != 0.0 and x_max == True:
+            if y >= x_lim and x_max == True:
                 x_max = x + 50
-                
+        zoom.xmin = x_min
+        zoom.xmax = x_max
 
         plot1.set_xlim(x_min,x_max)
     plot1.plot(array[:,0],array[:,1])
@@ -282,10 +290,30 @@ def Load_File(load_last = False): # this function loads the selected file
     pl.title('SiPM Output')
     pl.plot(array[:,0],array[:,1])
 
-    pl.xlim(min(array[:,0]),max(array[:,0])/2)
-    pl.rcParams['figure.figsize']  = 6,4
+    pl.xlim(zoom.xmin,zoom.xmax)
+    pl.rcParams['figure.figsize']  = 16,9
     pl.savefig('Saved/fig0.png')
+    
 
+    pl.rcParams.update({'font.size': 20})
+
+    pl.show()
+    pl.close(over_view)
+    
+    over_view = pl.figure()
+    pl.xlabel('ADC')
+    pl.ylabel('Entries')
+    pl.title('SiPM Output')
+    pl.plot(array[:,0],array[:,1])
+
+    
+    pl.rcParams['figure.figsize']  = 16,9
+    pl.savefig('Saved/fig0.png')
+    
+
+    pl.rcParams.update({'font.size': 20})
+
+    pl.show()
     pl.close(over_view)
 
 
@@ -390,13 +418,14 @@ def Big_Maths():# add a bit to read the settings
             if upper_bound <= lower_bound:
                 pass
                 tk.messagebox.showinfo('lower bound is larger than the upper bound','Error')
-            for index in range(0,Data.lines):
+            for index in range(0,file_info.rows):
                 if array[index,0] >= lower_bound and array[index,0] <= upper_bound:
                     x = array[index,0]
                     y = array[index,1]
                     data = np.r_[data,[[x,y]]]
             
-            fit_para = Single_Fit(data,Data.peak_coords[1][1],Data.peak_coords[1][0],default.Stdev)
+            fit_para, fit_err = Single_Fit(data,Data.peak_coords[1][1],Data.peak_coords[1][0],default.Stdev)
+            fit_err = np.sqrt(np.diag(fit_err))
            # print(('height: {0} \ncenter: {1} \nstdev: {2}').format(*fit_para))
                                                                 
             
@@ -422,20 +451,25 @@ def Big_Maths():# add a bit to read the settings
             Data.created_imgs.append('Saved/fig1.png')
        
             x_data = np.linspace(lower_bound-difference,upper_bound+difference,1000)
-        
+            
             single_fit = pl.figure()
+            print(fit_para,fit_err)
             pl.title('Single Fit')
-            pl.plot(x_data,Gaussian(x_data,*fit_para))
-            pl.plot(data[:,0],data[:,1],'+')
+            pl.plot(x_data,Gaussian(x_data,*fit_para),color = 'red',label = "Fit")
+            pl.plot(data[:,0],data[:,1],'+',label = 'Data')
             pl.xlim(lower_bound-difference,upper_bound+difference)
             pl.ylim(0,(Data.peak_coords[1][1]*1.5))
             pl.rcParams['figure.figsize']  = 16,9
             pl.savefig('Saved/fig2.png')
             pl.xlabel('ADC')
             pl.ylabel('Entries')
+            pl.legend()
             pl.show()
             pl.close(single_fit)    
             Data.created_imgs.append('Saved/fig2.png')
+            
+            tk.messagebox.showinfo('Done','Image saved at:\nSaved/fig2.png')
+            
     if Single_Peak_Mode_Only.get() == False:
         def update_progress(peak,flat_amount = None):
             if flat_amount == None:
@@ -498,8 +532,8 @@ def Big_Maths():# add a bit to read the settings
     
         # this cant be right they're tiny
             
-        pl.title('Multi Fit')
-
+        pl.title('Individual Fits')
+        pl.xlim(zoom.xmin,zoom.xmax)
        # pl.xlim(min(array[:,0]),5000)#remove this line after you've got a good iamge
 
         pl.rcParams['figure.figsize']  = 16,9
@@ -527,6 +561,8 @@ def Big_Maths():# add a bit to read the settings
         pl.rcParams['figure.figsize']  = 16,9
         pl.savefig('Saved/fig4.png')
         #pl.xlim(min(array[:,0]),5000)
+        pl.xlim(zoom.xmin,zoom.xmax)
+        pl.title('Total Fit')
         pl.xlabel('ADC')
         pl.ylabel('Entries')
         pl.show()
@@ -537,6 +573,9 @@ def Big_Maths():# add a bit to read the settings
         for i in range(0,len(centers)):
             x.append(i)
             y.append(centers[i])
+            
+            
+            
         peak_to_peak = pl.figure()
         pl.title('Peak to Peak seperation')
         pl.plot(x,y,'.')
