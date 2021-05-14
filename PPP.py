@@ -117,8 +117,24 @@ def load_defaults():
     config_file.close()
 
 load_defaults()  
+def read_all_lines():
+    global Data_files
+    for file in Data_files:
+        path = join('Data',file)
+        text_file = open(path,'r')
+        reader = text_file.readlines()
+        
+        
+        row_count = (len(reader))
+        array = np.zeros((row_count,2))
+
     
-    
+        for index,line in enumerate(reader):
+
+            x,y = float(line[:(line.find('\t'))]),float(line[(line.find('\t')):])
+            array[index,0] = float(x)
+            array[index,1] = float(y)
+        print(sum(array[:,1]))
 def Load_File(load_last = False): # this function loads the selected file
     Remove_Coords(clear= True)
 
@@ -238,7 +254,7 @@ def Load_File(load_last = False): # this function loads the selected file
     #sets the file info box to correct stuff
 
 
-
+    print(sum(array[:,1]))
 
     
     fig = pl.Figure(figsize = (16, 9))
@@ -1043,6 +1059,6 @@ if OS_name == 'Darwin':
 else:
     root.iconphoto(False, tk.PhotoImage(file='Config\icon.png'))
 
-
+read_all_lines()
 root.config(menu=menubar)
 root.mainloop()
