@@ -1,7 +1,7 @@
 Config/config.txt
-Data
+Data/
 plotassist.py
 staircase1.txt
 staircase2.txt
-Saved
-Legacy/Bias voltage.xlsx
+Saved/
+Legacy/
